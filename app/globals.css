@@ -1,26 +1,400 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --green: #00ff41; /* phosphor */
+  --green-hot: #c9ffd6; /* overdriven highlight */
+  --line: rgb(0 255 65 / 0.14);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-matrix: var(--green);
+  --color-matrix-hot: var(--green-hot);
+  --color-line: var(--line);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html {
+  background: #000;
+  scroll-padding-top: 5rem; /* in-page anchors land below the fixed header */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #000;
+  color: var(--green);
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--green);
+  color: #000;
+}
+
+/* ---------- Scrollbar: a thin phosphor rail ---------- */
+
+/* WebKit/Blink get the detailed version. Blink ignores these pseudo-elements once
+   `scrollbar-color` is set, so the standard properties are only a fallback (Firefox). */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+  border-left: 1px solid var(--line);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(0 255 65 / 0.45);
+  border: 2px solid #000; /* inset the thumb inside the rail */
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(0 255 65 / 0.75);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--green);
+}
+
+::-webkit-scrollbar-corner {
+  background: #000;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(0 255 65 / 0.4) #000;
+  }
+}
+
+:focus-visible {
+  outline: 1px solid var(--green);
+  outline-offset: 4px;
+}
+
+/* ---------- Entrance choreography (driven by [data-revealed]) ---------- */
+
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 0.75rem, 0);
+  transition:
+    opacity 1s var(--ease-out-expo),
+    transform 1s var(--ease-out-expo);
+  transition-delay: var(--delay, 0ms);
+}
+
+.reveal-line {
+  height: 1px;
+  background: var(--line);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.6s var(--ease-out-expo);
+  transition-delay: var(--delay, 0ms);
+}
+
+[data-revealed="true"] .reveal {
+  opacity: 1;
+  transform: none;
+}
+
+[data-revealed="true"] .reveal-line {
+  transform: none;
+}
+
+/* Below-the-fold sections (<InView>) hold their entrances until scrolled to. */
+[data-inview="false"] .reveal {
+  opacity: 0;
+  transform: translate3d(0, 1.25rem, 0);
+}
+
+[data-inview="false"] .reveal-line {
+  transform: scaleX(0);
+}
+
+/* ---------- Hero ---------- */
+
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 28% 48%, rgb(0 255 65 / 0.075), transparent 70%);
+}
+
+/* Sparse falling bits; sits under the backdrop so the grid, vignette and scanlines
+   treat it like part of the screen. */
+.ambient-rain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  font-family: var(--font-jetbrains-mono), monospace; /* read for the sprites */
+  opacity: 0;
+  transition: opacity 2.5s ease-out;
+}
+
+.ambient-rain[data-active="true"] {
+  opacity: 1;
+}
+
+/* Blueprint grid, faded out toward the edges. */
+.hero-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgb(0 255 65 / 0.05) 1px, transparent 1px) 0 0 / 72px 72px,
+    linear-gradient(to bottom, rgb(0 255 65 / 0.05) 1px, transparent 1px) 0 0 / 72px 72px;
+  mask-image: radial-gradient(ellipse 75% 70% at 40% 50%, #000 20%, transparent 80%);
+}
+
+/* Scanlines + vignette: continuity with the intro's CRT. */
+.hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 60%, rgb(0 0 0 / 0.6) 100%),
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.18) 2px 3px);
+}
+
+.hero-name {
+  color: var(--green);
+  text-shadow:
+    0 0 0.08em rgb(0 255 65 / 0.35),
+    0 0 0.45em rgb(0 255 65 / 0.18);
+  transition-duration: 0.6s;
+}
+
+.decode > [data-state="scramble"] {
+  color: rgb(0 255 65 / 0.4);
+  text-shadow: none;
+}
+
+/* Hover effect layer: a transparent twin of the name; its backgrounds (binary streams,
+   set from JS) are clipped to the glyphs so nothing shows in the empty space. */
+.name-matrix {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: none;
+  opacity: 0;
+  transition: opacity 0.32s ease-out;
+}
+
+.name-matrix[data-active="true"] {
+  opacity: 1;
+  transition-duration: 0.18s;
+}
+
+/* ---------- Fixed header ---------- */
+
+.site-header {
+  transition:
+    background-color 0.35s ease-out,
+    backdrop-filter 0.35s ease-out;
+}
+
+.site-header[data-scrolled="true"] {
+  background: rgb(0 0 0 / 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Navbar wordmark: `justyce>_` */
+.logo {
+  text-shadow: 0 0 0.6em rgb(0 255 65 / 0.35);
+}
+
+.logo-caret {
+  margin-left: 0.1em;
+  color: var(--green-hot);
+  transition: translate 0.25s var(--ease-out-expo);
+}
+
+.logo:hover .logo-caret {
+  translate: 0.15em 0;
+}
+
+.logo-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.14em;
+  margin-left: 0.2em;
+  background: var(--green);
+  box-shadow: 0 0 0.5em rgb(0 255 65 / 0.6);
+  animation: blink 1.06s steps(1, end) infinite;
+}
+
+.prompt-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 0.35em;
+  vertical-align: -0.2em;
+  background: var(--green);
+  animation: blink 1.06s steps(1, end) infinite;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 3rem;
+  padding-inline: 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s,
+    color 0.25s,
+    box-shadow 0.35s;
+}
+
+.btn-primary {
+  background: var(--green);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background: var(--green-hot);
+  box-shadow: 0 0 2rem rgb(0 255 65 / 0.45);
+}
+
+.btn-ghost {
+  color: var(--green);
+  border: 1px solid rgb(0 255 65 / 0.3);
+}
+
+.btn-ghost:hover {
+  border-color: var(--green);
+  background: rgb(0 255 65 / 0.06);
+}
+
+/* Contact buttons: green ghost at rest; on hover they fill with --choice (red / blue pill, or green). */
+.btn-choice {
+  --choice: var(--green);
+  color: var(--green);
+  border: 1px solid rgb(0 255 65 / 0.3);
+}
+
+.btn-choice:hover,
+.btn-choice:focus-visible {
+  border-color: var(--choice);
+  background: var(--choice);
+  color: #000;
+  box-shadow: 0 0 2rem color-mix(in srgb, var(--choice) 45%, transparent);
+}
+
+.choice-red {
+  --choice: #ff2a3d;
+}
+
+.choice-blue {
+  --choice: #2f7bff;
+}
+
+/* ---------- Binary cursor (0 idle, 1 over clickables) ---------- */
+
+.binary-cursor-on,
+.binary-cursor-on * {
+  cursor: none !important;
+}
+
+.binary-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  opacity: 0;
+  transition: opacity 0.2s;
+  will-change: transform;
+}
+
+.binary-cursor[data-visible="true"] {
+  opacity: 1;
+}
+
+.binary-cursor__glyph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--green);
+  text-shadow: 0 0 0.5em rgb(0 255 65 / 0.6);
+  translate: -50% -50%;
+  transition:
+    opacity 0.15s ease-out,
+    scale 0.25s var(--ease-out-expo),
+    rotate 0.25s var(--ease-out-expo);
+}
+
+/* Crossfade with a quarter-flip, like a bit toggling. */
+.binary-cursor[data-state="idle"] [data-glyph="1"],
+.binary-cursor[data-state="link"] [data-glyph="0"] {
+  opacity: 0;
+  scale: 0.4;
+  rotate: -90deg;
+}
+
+.binary-cursor[data-state="link"] [data-glyph="1"] {
+  scale: 1.15;
+}
+
+.binary-cursor[data-pressed="true"] .binary-cursor__glyph {
+  scale: 0.8;
+}
+
+.click-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* above the intro overlay, below the cursor */
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  font-family: var(--font-jetbrains-mono), monospace; /* read for the sprites */
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-line {
+    transition-duration: 0.01ms;
+    transition-delay: 0ms;
+  }
+  .prompt-cursor,
+  .logo-cursor {
+    animation: none;
+  }
+  .binary-cursor__glyph {
+    transition: opacity 0.15s;
+  }
 }
