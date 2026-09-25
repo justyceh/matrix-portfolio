@@ -122,6 +122,7 @@ function LivePrompt() {
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
+          enterKeyHint="done"
           onChange={(e) => {
             setValue(e.target.value);
             setCaret(e.target.selectionEnd ?? e.target.value.length);
@@ -130,6 +131,8 @@ function LivePrompt() {
             if (e.key !== "Enter") return;
             e.preventDefault();
             submit();
+            // On touch devices, dismiss the on-screen keyboard so the dissolve is visible.
+            if (window.matchMedia("(pointer: coarse)").matches) e.currentTarget.blur();
           }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
